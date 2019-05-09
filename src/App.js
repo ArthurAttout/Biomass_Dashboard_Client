@@ -1,8 +1,12 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
 import Websocket from 'react-websocket';
 import './App.css';
 import { SortablePane, Pane } from 'react-sortable-pane';
+import ReactBnbGallery from 'react-bnb-gallery'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faMapMarkerAlt,faClock,faEdit, faTimes, faCheck } from '@fortawesome/free-solid-svg-icons'
+import Moment from 'react-moment';
+import Button from '@material-ui/core/Button';
 
 const titleStyle = {
 	color: "#000000",
@@ -37,9 +41,44 @@ const mainDivStyle = {
 }
 
 const reportStyle = {
+	display: 'flex',
+	flexDirection: 'column',
 	backgroundColor: "#9EED9C",
 	margin: 20,
 }
+
+const reportInfoImageStyle = {
+	padding: 50,
+	display: 'flex',
+	justifyContent: 'space-between',
+}
+
+const reportsButtonsStyle = {
+	padding: 20,
+	display: 'flex',
+	justifyContent: 'space-between',
+}
+
+const imageContainerStyle = {
+	display: "flex",
+	justifyContent: "right"
+}
+
+const reportInfoContainerStyle = {
+	display: "flex",
+	flexDirection: "column",
+	justifyContent: "space-between"
+}
+
+const panelContainerStyle = {
+	display: "flex",
+	justifyContent: "space-between"
+}
+
+const infoEntryStyle = {
+	fontSize: 12
+}
+
 
 class App extends Component {
 	
@@ -47,7 +86,7 @@ class App extends Component {
 		super(props);
 		this.state = { 
 			message: "nothing yet",
-			dummy : 'yo',
+			shouldShowGallery: false,
 			arrayReports : []
 		};
 	}
@@ -72,6 +111,15 @@ class App extends Component {
 				this.setState(({
 					arrayReports: result['reports']
 				}))
+				break
+				
+			case "NEW_REPORT":
+				console.log("New report incoming")
+				
+				this.setState(prevState => ({
+					arrayReports: [...prevState.arrayReports, result['new_report']]
+				}))
+				break
 		}
 	}
 	
@@ -87,51 +135,114 @@ class App extends Component {
 		e.preventDefault();
 		console.log('The link was clicked.');
 	}
+	
+	showGallery(images){
+		this.setState(({
+			shouldShowGallery: true,
+			imagesToShow: images
+		}))
+	}
+	
+	closeGallery(){
+		this.setState(({
+			shouldShowGallery: false,
+			imagesToShow: []
+		}))
+	}
 
 	render(){
-		const listReports = this.state.arrayReports.map(r => 
-			<div key={r.id} style={reportStyle}>
-				Report
-			</div>
-		)
-		const panes = []
-		panes[0] = (
-			<Pane key={0} defaultSize={{ width: '20%', height: '80%' }} style={paneStyle}>
-			  Statistiques {this.state.dummy}
-			</Pane>
-		)
-		
-		panes[1] = (
-			<Pane key={1} defaultSize={{ width: '50%', height: '80%'  }} style={paneStyle}>
-			  <div>Dossiers de biomasses non identifiées</div>
-			  <div>
-				{listReports}
-			  </div>
-			</Pane>
-		)
-		
-		panes[2] = (
-			<Pane key={2} defaultSize={{ width: '25%', height: '80%'  }} style={paneStyle}>
-			  Dernières identifications
-			</Pane>
-		)
-		
-		return (
-			<div style={mainDivStyle}>
-				<div style={titleStyle}>
-					BIOMASSE
-				</div>
-				<SortablePane direction="horizontal" style={{ height: '100%' }} margin={20} >
-					{panes}	
-				</SortablePane>
+		if(!this.state.shouldShowGallery){		
+			const listReports = this.state.arrayReports.map(r => {
 				
-				<Websocket url='ws://192.168.1.85:8080/'
-					onMessage={this.handleData.bind(this)}
-					onOpen={this.handleConnection.bind(this)}
-					ref={Websocket => {this.refWebSocket = Websocket;}}/>
-			</div>
+				const images = r.images.length > 0 ? 
+					(<img src={r.images[0].path} style={{ width : '30%'}} onClick={() => this.showGallery(r.images)}/>)
+				:
+					(<div>Pas d'images disponibles</div>)
+				
+				return (
+					<div key={r.id} style={reportStyle}>
+						<div style={reportInfoImageStyle}>
+							<div style={reportInfoContainerStyle}>
+								<div>
+									<FontAwesomeIcon icon={faClock} style={{paddingRight:15}}/>
+									<Moment format="DD - MM - YYYY" style={infoEntryStyle}>
+										{r.submission_date}
+									</Moment>
+								</div>
+								<div>
+									<FontAwesomeIcon icon={faMapMarkerAlt} style={{paddingRight:15}}/>
+									<span style={infoEntryStyle}>{r.place}</span>
+								</div>
+								<div>
+									<FontAwesomeIcon icon={faEdit} style={{paddingRight:15}}/>
+									<span style={infoEntryStyle}>{r.comment}</span>
+								</div>
+							</div>
+							
+							<div style={imageContainerStyle}>
+								{images}
+							</div>
+						</div>
+						<div style={reportsButtonsStyle}>
+							<div>
+								<Button variant="contained">
+									Identifier
+									<FontAwesomeIcon icon={faCheck} style={{paddingLeft:8}}/>
+								</Button>
+							</div>
+							<div>
+								<Button variant="contained">
+									Ignorer
+									<FontAwesomeIcon icon={faTimes} style={{paddingLeft:8}}/>
+								</Button>
+							</div>
+						</div>
+					</div>
+				)
+			})
 			
-		);
+			
+			return (
+				<div style={mainDivStyle}>
+				
+					<div style={titleStyle}>
+						BIOMASSE
+					</div>
+					<div style={panelContainerStyle}>
+						<div style={{... paneStyle, width: '12%'}}>
+							Statistiques
+						</div>
+						
+						<div style={{... paneStyle, width: '49%'}}>
+							<div>Dossiers de biomasses non identifiées</div>
+							<div>
+								{listReports}
+							</div>
+						</div>
+
+						<div style={{... paneStyle, width: '21%'}}>
+							Dernières identifications
+						</div>
+					</div>
+
+					
+					<Websocket url='ws://192.168.1.85:8080/'
+						onMessage={this.handleData.bind(this)}
+						onOpen={this.handleConnection.bind(this)}
+						ref={Websocket => {this.refWebSocket = Websocket;}}/>
+				</div>
+				
+			);
+		}
+		else{
+			// Gallery
+			return (
+				<ReactBnbGallery
+					show={true}
+					photos={this.state.imagesToShow.map(img => img.path)}
+					onClose={this.closeGallery.bind(this)} />
+			)
+		}
 	}
 }
 
