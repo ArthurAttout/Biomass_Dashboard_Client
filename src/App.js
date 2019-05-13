@@ -1,12 +1,12 @@
 import React, { Component } from 'react';
 import Websocket from 'react-websocket';
 import './App.css';
-import { SortablePane, Pane } from 'react-sortable-pane';
 import ReactBnbGallery from 'react-bnb-gallery'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faMapMarkerAlt,faClock,faEdit, faTimes, faCheck } from '@fortawesome/free-solid-svg-icons'
+import { faMapMarkerAlt,faClock,faEdit, faTimes, faCheck, faExclamationCircle } from '@fortawesome/free-solid-svg-icons'
 import Moment from 'react-moment';
 import Button from '@material-ui/core/Button';
+import IconButton from '@material-ui/core/IconButton';
 
 const titleStyle = {
 	color: "#000000",
@@ -79,6 +79,19 @@ const infoEntryStyle = {
 	fontSize: 12
 }
 
+const historyEntryStyle = {
+	display: 'flex',
+	justifyContent: 'space-between',
+	padding: 20,
+	alignItems: 'center'
+}
+
+const historyInfoStyle = {
+	display: 'flex',
+	flexDirection: 'column',
+	fontSize: 18
+}
+
 
 class App extends Component {
 	
@@ -87,7 +100,8 @@ class App extends Component {
 		this.state = { 
 			message: "nothing yet",
 			shouldShowGallery: false,
-			arrayReports : []
+			arrayReports : [],
+			history : [],
 		};
 	}
 
@@ -101,6 +115,18 @@ class App extends Component {
 				
 				this.refWebSocket.sendMessage(JSON.stringify({
 					"type":"GET_REPORTS"
+				}))
+				
+				this.refWebSocket.sendMessage(JSON.stringify({
+					"type":"GET_HISTORY"
+				}))
+				break
+				
+			case "OK_HISTORY":
+				console.log("Server said OK history")
+				console.log(result['history'])
+				this.setState(({
+					history: result['history']
 				}))
 				break
 				
@@ -120,6 +146,10 @@ class App extends Component {
 					arrayReports: [...prevState.arrayReports, result['new_report']]
 				}))
 				break
+				
+			case "NEW_HISTORY":
+				console.log("Received new history elem")
+				console.log(result['elem'])
 		}
 	}
 	
@@ -201,6 +231,23 @@ class App extends Component {
 				)
 			})
 			
+			const history = this.state.history.map(h => (
+				<div key={h.id} style={historyEntryStyle}>
+					<img src={h.path} style={{ width : '30%'}}/>
+					<div style={historyInfoStyle}>
+						<div>{h.name}</div>
+						<div>Certitude : {(h.certitude * 100).toFixed(2)}</div>
+						<Moment format="DD - MM - YYYY">
+							{h.date}
+						</Moment>
+					</div>
+					<IconButton>
+						<FontAwesomeIcon icon={faExclamationCircle} style={{textAlign: 'center'}}/>
+					</IconButton>
+					
+				</div>
+			))
+			
 			
 			return (
 				<div style={mainDivStyle}>
@@ -209,19 +256,22 @@ class App extends Component {
 						BIOMASSE
 					</div>
 					<div style={panelContainerStyle}>
-						<div style={{... paneStyle, width: '12%'}}>
+						<div style={{...paneStyle, width: '12%'}}>
 							Statistiques
 						</div>
 						
-						<div style={{... paneStyle, width: '49%'}}>
+						<div style={{...paneStyle, width: '49%'}}>
 							<div>Dossiers de biomasses non identifiées</div>
 							<div>
 								{listReports}
 							</div>
 						</div>
 
-						<div style={{... paneStyle, width: '21%'}}>
-							Dernières identifications
+						<div style={{...paneStyle, width: '21%'}}>
+							<div>Dernières identifications</div>
+							<div>
+								{history}
+							</div>
 						</div>
 					</div>
 
