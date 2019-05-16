@@ -31,7 +31,8 @@ const paneStyle = {
 	display: 'flex',
 	flexDirection: 'column',
 	justifyContent: 'left',
-	padding: 30,
+	padding: 25,
+	margin: 10,
 	color: "#035218",
 	fontWeight: "bold",
 	fontSize: 20,
@@ -69,7 +70,7 @@ const reportsButtonsStyle = {
 
 const imageContainerStyle = {
 	display: "flex",
-	justifyContent: "right"
+	flexDirection: "row-reverse"
 }
 
 const reportInfoContainerStyle = {
@@ -224,7 +225,7 @@ class App extends Component {
 			const listReports = this.state.arrayReports.map(r => {
 				
 				const images = r.images.length > 0 ? 
-					(<img src={r.images[0].path} style={{ width : '30%'}} onClick={() => this.showGallery(r.images)}/>)
+					(<img src={r.images[0].path} style={{ width : 80, height: 'auto'}} onClick={() => this.showGallery(r.images)}/>)
 				:
 					(<div>Pas d'images disponibles</div>)
 				
@@ -254,7 +255,7 @@ class App extends Component {
 						</div>
 						<div style={reportsButtonsStyle}>
 							<div>
-								<Button variant="contained" onClick={() => {this.handleOpenModal(r.id)}}>
+								<Button variant="contained" onClick={() => {this.handleOpenModal(r)}}>
 									Identifier
 									<FontAwesomeIcon icon={faCheck} style={{paddingLeft:8}}/>
 								</Button>
@@ -272,7 +273,7 @@ class App extends Component {
 			
 			const history = this.state.history.map(h => (
 				<div key={h.id} style={historyEntryStyle}>
-					<img src={h.path} style={{ width : '30%'}}/>
+					<img src={h.path} style={{ width : '30%', paddingRight: 10}}/>
 					<div style={historyInfoStyle}>
 						<div>{h.name}</div>
 						<div>Certitude : {(h.certitude * 100).toFixed(2)}</div>
@@ -310,7 +311,7 @@ class App extends Component {
 							</div>
 						</div>
 
-						<div style={{...paneStyle, width: '21%'}}>
+						<div style={{...paneStyle, width: '28%'}}>
 							<div>Dernières identifications</div>
 							<div>
 								{history}
@@ -370,10 +371,14 @@ class App extends Component {
 		}
 	}
 	
-	handleOpenModal = reportId => {
+	handleOpenModal = report => {
 		console.log("Show modal !");
-		console.log(reportId);
-		this.setState({ showModal: true, currentReportID: reportId });
+		console.log(report.id);
+		this.setState({ 
+			showModal: true, 
+			currentReportID: report.id,
+			currentReportImages: report.images.map(i => i.path)
+		});
 	};
 
 	handleCloseModal = () => {
@@ -396,6 +401,7 @@ class App extends Component {
 			"report_id": this.state.currentReportID,
 			"identity": this.state.selectedBiomass,
 			"biomass_id": this.state.selectedBiomassID,
+			"url_images": this.state.currentReportImages
 		}
 		this.refWebSocket.sendMessage(JSON.stringify(identifyMessage))
 		this.setState(prevState => ({ 
