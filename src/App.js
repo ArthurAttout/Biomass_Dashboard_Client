@@ -7,6 +7,14 @@ import { faMapMarkerAlt,faClock,faEdit, faTimes, faCheck, faExclamationCircle } 
 import Moment from 'react-moment';
 import Button from '@material-ui/core/Button';
 import IconButton from '@material-ui/core/IconButton';
+import Typography from '@material-ui/core/Typography';
+import Modal from '@material-ui/core/Modal';
+import InputLabel from '@material-ui/core/InputLabel';
+import MenuItem from '@material-ui/core/MenuItem';
+import FormHelperText from '@material-ui/core/FormHelperText';
+import FormControl from '@material-ui/core/FormControl';
+import Select from '@material-ui/core/Select';
+
 
 const titleStyle = {
 	color: "#000000",
@@ -92,6 +100,17 @@ const historyInfoStyle = {
 	fontSize: 18
 }
 
+const modalStyle = {
+	display: 'flex',
+	flexDirection: 'column',
+	padding: 40,
+	width: 350,
+	height: 250,
+	boxShadow: 3,
+    backgroundColor: '#f4f4f4',
+    outline: 'none',
+}
+
 
 class App extends Component {
 	
@@ -101,7 +120,10 @@ class App extends Component {
 			message: "nothing yet",
 			shouldShowGallery: false,
 			arrayReports : [],
+			showModal: false,
 			history : [],
+			biomassList: [],
+			selectedBiomass: "",
 		};
 	}
 
@@ -120,6 +142,11 @@ class App extends Component {
 				this.refWebSocket.sendMessage(JSON.stringify({
 					"type":"GET_HISTORY"
 				}))
+				
+				this.refWebSocket.sendMessage(JSON.stringify({
+					"type":"GET_BIOMASS_LIST"
+				}))
+				
 				break
 				
 			case "OK_HISTORY":
@@ -139,6 +166,14 @@ class App extends Component {
 				}))
 				break
 				
+			case "OK_BIOMASS_LIST":
+				console.log("Server said Biomass list")
+				console.log(result['biomass_list'])
+				this.setState(({
+					biomassList: result['biomass_list']
+				}))
+				break
+				
 			case "NEW_REPORT":
 				console.log("New report incoming")
 				
@@ -149,7 +184,11 @@ class App extends Component {
 				
 			case "NEW_HISTORY":
 				console.log("Received new history elem")
-				console.log(result['elem'])
+				console.log(result)
+				this.setState(prevState => ({
+					history: [...prevState.history, result['elem']]
+				}))
+				break
 		}
 	}
 	
@@ -215,7 +254,7 @@ class App extends Component {
 						</div>
 						<div style={reportsButtonsStyle}>
 							<div>
-								<Button variant="contained">
+								<Button variant="contained" onClick={() => {this.handleOpenModal(r.id)}}>
 									Identifier
 									<FontAwesomeIcon icon={faCheck} style={{paddingLeft:8}}/>
 								</Button>
@@ -246,6 +285,10 @@ class App extends Component {
 					</IconButton>
 					
 				</div>
+			))
+			
+			const menuItemsBiomass = this.state.biomassList.map(b => (
+				<MenuItem key={b.id} value={b.name}>{b.name}</MenuItem>
 			))
 			
 			
@@ -280,6 +323,38 @@ class App extends Component {
 						onMessage={this.handleData.bind(this)}
 						onOpen={this.handleConnection.bind(this)}
 						ref={Websocket => {this.refWebSocket = Websocket;}}/>
+						
+						<Modal
+						aria-labelledby="simple-modal-title"
+						aria-describedby="simple-modal-description"
+						open={this.state.showModal}
+						style={{ display: 'flex', justifyContent: 'center', alignItems: 'center'}}
+						onClose={this.handleCloseModal}>
+							<div style={modalStyle}> 
+								<Typography variant="h6" id="modal-title">
+									Identification d'une biomasse
+								</Typography>
+								<Typography style={{paddingTop : 15}}>
+									Précisez l'identité de la biomasse
+								</Typography>
+								<FormControl style={{marginTop: 20}}>
+									<InputLabel htmlFor="age-simple">Biomasse</InputLabel>
+									<Select
+										value={this.state.selectedBiomass}
+										onChange={this.handleSelectBiomass}>
+											<MenuItem value="">
+												<em>Nouvelle</em>
+											</MenuItem>
+											
+											{menuItemsBiomass}
+									</Select>
+								</FormControl>
+								<Button variant="contained" style={{marginTop: 35}} onClick={this.handleSubmitIdentify} >
+									Valider
+									<FontAwesomeIcon icon={faCheck} style={{paddingLeft:8}}/>
+								</Button>
+							</div>
+						</Modal>
 				</div>
 				
 			);
@@ -294,6 +369,40 @@ class App extends Component {
 			)
 		}
 	}
+	
+	handleOpenModal = reportId => {
+		console.log("Show modal !");
+		console.log(reportId);
+		this.setState({ showModal: true, currentReportID: reportId });
+	};
+
+	handleCloseModal = () => {
+		this.setState({ showModal: false, currentReportID: -1 });
+	};
+	
+	handleSelectBiomass = event => {
+
+		const biomassName = event.target.value;
+		console.log(this.state.biomassList)
+		this.setState({ 
+			selectedBiomass: biomassName,
+			selectedBiomassID: this.state.biomassList.filter(b => b.name === biomassName)[0].id
+		});
+	};
+	
+	handleSubmitIdentify = () => {
+		const identifyMessage = {
+			"type":"IDENTIFY_BIOMASS",
+			"report_id": this.state.currentReportID,
+			"identity": this.state.selectedBiomass,
+			"biomass_id": this.state.selectedBiomassID,
+		}
+		this.refWebSocket.sendMessage(JSON.stringify(identifyMessage))
+		this.setState(prevState => ({ 
+			showModal: false, 
+			arrayReports : prevState.arrayReports.filter(r => r.id != this.state.currentReportID)
+		}));
+	};
 }
 
 export default App;
