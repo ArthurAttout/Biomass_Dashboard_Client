@@ -12,9 +12,10 @@ import Modal from '@material-ui/core/Modal';
 import InputLabel from '@material-ui/core/InputLabel';
 import MenuItem from '@material-ui/core/MenuItem';
 import FormHelperText from '@material-ui/core/FormHelperText';
+import moment from "moment";
 import FormControl from '@material-ui/core/FormControl';
 import Select from '@material-ui/core/Select';
-
+import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend,ResponsiveContainer } from 'recharts';
 
 const titleStyle = {
 	color: "#000000",
@@ -112,6 +113,12 @@ const modalStyle = {
     outline: 'none',
 }
 
+const top5Style = {
+	display: 'flex',
+	flexDirection: 'column',
+	fontSize: 15,
+	marginTop: 20,
+}
 
 class App extends Component {
 	
@@ -125,6 +132,8 @@ class App extends Component {
 			history : [],
 			biomassList: [],
 			selectedBiomass: "",
+			statsNumberRequests: [],
+			top5biomass: []
 		};
 	}
 
@@ -148,6 +157,10 @@ class App extends Component {
 					"type":"GET_BIOMASS_LIST"
 				}))
 				
+				this.refWebSocket.sendMessage(JSON.stringify({
+					"type":"GET_STATS"
+				}))
+				
 				break
 				
 			case "OK_HISTORY":
@@ -157,6 +170,16 @@ class App extends Component {
 					history: result['history']
 				}))
 				break
+				
+			case "OK_STATS":
+				console.log("Server said OK stats")
+				console.log(result)
+				this.setState(({
+					statsNumberRequests: result['stats_number_requests'],
+					top5biomass: result['stats_top_5_biomass']
+				}))
+				break
+			
 				
 			case "OK_REPORTS":
 				console.log("Server said OK reports")
@@ -292,6 +315,25 @@ class App extends Component {
 				<MenuItem key={b.id} value={b.name}>{b.name}</MenuItem>
 			))
 			
+			const data = this.state.statsNumberRequests.map(s => ({
+				name: moment(s.date).format("DD-MM"),
+				val: s.val
+			}))
+			const statsChart = (
+				<ResponsiveContainer width='100%' height='100%'>
+					<LineChart data={data} margin={{top: 30}}>
+						<XAxis dataKey="name" style={{fontSize: 11}} angle={-45} interval={0}/>
+						<YAxis  style={{fontSize: 9}} width={20}/>
+						<Tooltip/>
+						<Line type="monotone" dataKey="val" stroke="#82ca9d" />
+					</LineChart>
+				</ResponsiveContainer>
+			)
+			
+			const top5biomass = this.state.top5biomass.map(b => (
+				<div>{b.name}</div>
+			))
+			
 			
 			return (
 				<div style={mainDivStyle}>
@@ -300,8 +342,19 @@ class App extends Component {
 						BIOMASSE
 					</div>
 					<div style={panelContainerStyle}>
-						<div style={{...paneStyle, width: '12%'}}>
+						<div style={{...paneStyle,alignItems: 'center', width: '12%'}}>
 							Statistiques
+							<div style={{width: '100%', height:250}}>
+								<div style={{fontSize: 15, fontVariant: 'small-caps', marginTop: 80, marginLeft: 10}}>Nombre de requêtes</div>
+								{statsChart}
+								
+								<div style={{backgroundColor:"#9EED9C", padding: 8, marginTop: 80}}>
+									<div style={{fontSize: 15, fontVariant: 'small-caps', marginLeft: 10}}>Top 5 identifications</div>
+									<div style={top5Style}>
+										{top5biomass}
+									</div>
+								</div>
+							</div>
 						</div>
 						
 						<div style={{...paneStyle, width: '49%'}}>
